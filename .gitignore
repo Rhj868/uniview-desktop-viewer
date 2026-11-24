@@ -1,0 +1,10 @@
+__pycache__/
+*.py[cod]
+.venv/
+build/
+dist/
+installer/
+*.log
+.runtime.json
+session.json
+roots.json

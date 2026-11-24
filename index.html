@@ -1,0 +1,1409 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<title>UniView</title>
+<link rel="icon" type="image/x-icon" href="/favicon.ico">
+<style>
+  :root{
+    --bg:#fff; --page:#f6f7f9; --line:#e4e7eb; --line2:#cdd4dd;
+    --text:#1f2329; --muted:#6b7280; --blue:#15599e; --blue-bg:#e7f1fb;
+    --amber:#8a540b; --amber-bg:#fbf0dc; --green:#0d6b55; --green-bg:#e2f5ee;
+    --red:#a52d2d; --red-bg:#fbeaea;
+  }
+  *{box-sizing:border-box}
+  html,body{height:100%}
+  body{margin:0;background:var(--page);color:var(--text);font:13.5px/1.6 "Segoe UI","Microsoft YaHei",system-ui,sans-serif;overflow:hidden}
+  header{height:52px;display:flex;align-items:center;gap:10px;padding:0 14px;background:var(--bg);border-bottom:1px solid var(--line)}
+  .brand{font-size:14px;font-weight:600;white-space:nowrap;letter-spacing:.3px}
+  .brand small{font-weight:400;color:var(--muted);font-size:11.5px;margin-left:6px}
+  button{font:12.5px/1.4 inherit;padding:6px 11px;border:1px solid var(--line2);border-radius:7px;background:var(--bg);color:var(--text);cursor:pointer;white-space:nowrap}
+  button:hover:not(:disabled){border-color:var(--blue);color:var(--blue)}
+  button.primary{background:var(--blue);border-color:var(--blue);color:#fff}
+  button.primary:hover:not(:disabled){color:#fff;opacity:.9}
+  button.on{background:var(--blue-bg);border-color:var(--blue);color:var(--blue)}
+  button:disabled{opacity:.4;cursor:not-allowed}
+  input[type=text],select{font:12.5px inherit;padding:6px 9px;border:1px solid var(--line2);border-radius:7px;background:var(--bg);color:var(--text);outline:none}
+  input[type=text]:focus,select:focus{border-color:var(--blue)}
+  .grow{flex:1}
+  #searchBox{width:270px}
+  .app{display:flex;height:calc(100vh - 52px - 28px)}
+  aside{width:248px;flex:none;background:var(--bg);border-right:1px solid var(--line);display:flex;flex-direction:column;overflow:hidden}
+  .side-top{padding:10px;border-bottom:1px solid var(--line);display:flex;flex-direction:column;gap:7px}
+  .side-top input{width:100%}
+  .side-hd{font-size:11.5px;color:var(--muted);padding:6px 10px 4px 12px;display:flex;align-items:center;gap:6px;min-height:29px}
+  .side-hd .hd-text{flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .side-hd label{display:flex;align-items:center;gap:3px;font-size:10.5px;white-space:nowrap;cursor:pointer;flex:none}
+  .side-hd input[type=checkbox]{margin:0;width:12px;height:12px;accent-color:var(--blue)}
+  .side-hd button{padding:2px 6px;font-size:10.5px;border-radius:5px;flex:none}
+  .row.dim{color:var(--muted);opacity:.72}
+  /* 目录行与层级：目录加粗变蓝，子项容器缩进 + 竖线，避免展开后被误认为平铺文件 */
+  .row.dir{font-weight:600;color:var(--blue)}
+  .row.dir:hover{background:var(--blue-bg)}
+  .row .kids{margin-left:auto;font-size:10px;font-weight:400;color:var(--muted);flex:none;white-space:nowrap}
+  div[data-child="1"]{margin-left:12px;border-left:1px solid var(--line2);padding-left:0}
+  /* 展开出来的内容在文件夹行下方独立滚动：文件再多也只占固定高度，后面的文件夹不会被顶出视野 */
+  #tree > div[data-child="1"]{max-height:300px;overflow-y:auto;overflow-x:hidden;box-shadow:inset 0 -9px 9px -9px rgba(0,0,0,.18)}
+  #tree,#results{flex:1;overflow:auto;padding:2px 6px 20px}
+  .hd-count{font-size:10px;color:var(--muted);flex:none}
+  .row{display:flex;align-items:center;gap:6px;padding:5px 8px;border-radius:6px;cursor:pointer;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-size:12.5px}
+  .row:hover{background:var(--page)}
+  .row.on{background:var(--blue-bg);color:var(--blue)}
+  .row .ic{width:15px;flex:none;text-align:center;color:var(--muted);font-size:11px}
+  .row .nm{overflow:hidden;text-overflow:ellipsis}
+  .badge{margin-left:auto;font-size:10px;color:var(--muted);border:1px solid var(--line2);border-radius:4px;padding:0 4px;flex:none}
+  .hit{padding:8px 10px;border-bottom:1px solid var(--line);cursor:pointer}
+  .hit:hover{background:var(--blue-bg)}
+  .hit b{font-size:12.5px;font-weight:600;display:block}
+  .hit span{font-size:11.5px;color:var(--muted);display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  main{flex:1;min-width:0;display:flex;flex-direction:column;overflow:hidden}
+  #tabs{height:38px;flex:none;display:flex;align-items:stretch;gap:2px;background:var(--bg);border-bottom:1px solid var(--line);padding:4px 8px 0;overflow-x:auto}
+  .tab{display:flex;align-items:center;gap:7px;padding:0 10px;max-width:210px;border:1px solid transparent;border-bottom:none;border-radius:7px 7px 0 0;cursor:pointer;font-size:12.5px;white-space:nowrap}
+  .tab .nm{overflow:hidden;text-overflow:ellipsis}
+  .tab.on{background:var(--page);border-color:var(--line);color:var(--blue)}
+  .tab .x{color:var(--muted);font-size:14px;line-height:1}
+  .tab .x:hover{color:var(--red)}
+  .bar{height:44px;flex:none;display:flex;align-items:center;gap:7px;padding:0 14px;background:var(--bg);border-bottom:1px solid var(--line)}
+  .bar .path{font-size:12px;color:var(--muted);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:430px}
+  #stage{flex:1;min-height:0;position:relative;overflow:auto;background:var(--page)}
+  .wrap{padding:16px 20px 30px;max-width:1100px;margin:0 auto}
+  .paper{background:var(--bg);border:1px solid var(--line);border-radius:10px;padding:24px 30px;min-height:300px;box-shadow:0 1px 2px rgba(0,0,0,.03)}
+  .paper h1,.paper h2,.paper h3{line-height:1.35;margin:.8em 0 .4em}
+  .paper h1{font-size:24px}.paper h2{font-size:19px}.paper h3{font-size:16px}
+  .paper p{margin:.55em 0}
+  .paper img{max-width:100%}
+  .paper pre{background:var(--page);border:1px solid var(--line);border-radius:7px;padding:11px 13px;overflow:auto;font:12.5px/1.6 Consolas,ui-monospace,monospace}
+  .paper code{font-family:Consolas,ui-monospace,monospace;background:var(--page);padding:1px 4px;border-radius:4px}
+  .paper blockquote{border-left:3px solid var(--line2);margin:.6em 0;padding:.2em 0 .2em 12px;color:var(--muted)}
+  .paper table{border-collapse:collapse;font-size:12.5px}
+  .paper th,.paper td{border:1px solid var(--line);padding:5px 9px;text-align:left}
+  .paper th{background:var(--page)}
+  textarea.src{width:100%;min-height:calc(100vh - 250px);border:1px solid var(--line);border-radius:8px;padding:14px 16px;font:13px/1.75 Consolas,"Microsoft YaHei",ui-monospace,monospace;resize:vertical;background:var(--bg);color:var(--text);outline:none}
+  textarea.src:focus{border-color:var(--blue)}
+  .pre-code{white-space:pre-wrap;word-break:break-word;font:12.8px/1.7 Consolas,ui-monospace,monospace;margin:0}
+  .slide{border:1px solid var(--line);border-radius:8px;padding:14px 18px;margin-bottom:12px;background:var(--page)}
+  .slide .no{font-size:11px;color:var(--muted);margin-bottom:6px}
+  /* PPT 内置预览：按幻灯片真实坐标绝对定位，整页等比缩放（字号用 cqw 跟随） */
+  .ppt-deck{display:flex;flex-direction:column;gap:16px}
+  .ppt-slide-wrap .no{font-size:11px;color:var(--muted);margin:0 0 6px}
+  .ppt-slide{position:relative;width:100%;max-width:1020px;margin:0 auto;background:#fff;
+    border:1px solid var(--line);border-radius:8px;overflow:hidden;
+    box-shadow:0 1px 4px rgba(0,0,0,.06);container-type:inline-size}
+  .ppt-slide.ppt-blank{padding:20px;text-align:center}
+  .ppt-shape{position:absolute;overflow:hidden}
+  .ppt-shape p{margin:0 0 .22em;line-height:1.18}
+  .ppt-shape table{width:100%;border-collapse:collapse}
+  .ppt-shape img.ppt-photo{display:block;width:100%;height:100%;object-fit:cover}
+  .ppt-shape .ppt-noimg{font-size:1.7cqw;padding:2px 6px;margin:0}
+  .ppt-vc{height:100%;display:flex;flex-direction:column;justify-content:center}
+  .ppt-vb{height:100%;display:flex;flex-direction:column;justify-content:flex-end}
+  .ppt-loose{padding:8px 12px;margin-top:8px;border-top:1px dashed var(--line2);font-size:12.5px}
+  .ppt-loose img{max-width:100%}
+  .ppt-noimg,.rtf-noimg{font-size:12px;color:var(--muted);border:1px dashed var(--line2);border-radius:6px;padding:6px 10px;margin:6px 0;background:var(--page)}
+  /* RTF 内置渲染 */
+  .rtf-img{max-width:100%;height:auto;border-radius:3px;margin:4px 0}
+  .rtf-pagebreak{border-top:1px dashed var(--line2);margin:14px 0}
+  .badge.off{opacity:.5}
+  .note-card h2{margin:0 0 10px;font-size:17px}
+  .note-card p{margin:.5em 0;color:var(--muted)}
+  .mode-hint{font-size:11.5px;color:var(--amber);background:var(--amber-bg);border:1px solid #e8c985;border-radius:6px;padding:5px 10px;margin-bottom:12px}
+  .imgbox{text-align:center;padding:10px}
+  .imgbox img{max-width:100%;box-shadow:0 2px 12px rgba(0,0,0,.08)}
+  .pdfFrame{width:100%;height:calc(100vh - 190px);border:0;background:#fff}
+  /* Office 文档区：留白让底层 WPS 原生窗口透出来 */
+  .pane-office{position:absolute;background:#fff;border:1px dashed var(--line2);border-radius:8px;overflow:hidden}
+  .pane-office .ph{padding:26px;color:var(--muted);font-size:13px;line-height:2}
+  /* 状态提示必须放在文档区之外：嵌入的 WPS 是原生窗口，会盖住其下方的 HTML */
+  .office-tip{display:none;background:var(--amber-bg);color:var(--amber);border:1px solid #e8c985;border-radius:6px;padding:3px 9px;font-size:11.5px;max-width:330px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .office-tip.ok{background:var(--green-bg);color:var(--green);border-color:#a9ddc9}
+  .office-tip.err{background:var(--red-bg);color:var(--red);border-color:#eab7b7}
+  table.csv{border-collapse:collapse;width:100%;font-size:12.5px}
+  table.csv td,table.csv th{border:1px solid var(--line);padding:5px 9px;white-space:pre-wrap}
+  table.csv th{background:var(--page);color:var(--muted)}
+  .empty{text-align:center;color:var(--muted);padding:100px 20px;line-height:2}
+  .empty .big{font-size:38px;color:var(--line2)}
+  footer{height:28px;display:flex;align-items:center;gap:12px;padding:0 14px;background:var(--bg);border-top:1px solid var(--line);font-size:11.5px;color:var(--muted)}
+  footer b{color:var(--text);font-weight:500}
+  #toast{position:fixed;right:18px;bottom:40px;background:#1f2329;color:#fff;padding:9px 15px;border-radius:8px;font-size:12.5px;opacity:0;transition:opacity .2s;pointer-events:none;z-index:99;max-width:480px}
+
+  /* ===== 紧凑布局：覆盖上面的基础尺寸，把顶部三行压成两行，把空间还给文档区 ===== */
+  body{display:flex;flex-direction:column}
+  header{height:36px;flex:none;padding:0 9px;gap:7px}
+  .brand{font-size:13px;font-weight:700;color:var(--blue)}
+  .brand small{display:none}
+  button{padding:4px 9px;font-size:12px;border-radius:6px}
+  header button{padding:3px 9px;font-size:11.5px}
+  input[type=text],select{padding:4px 8px;font-size:12px}
+  #rootSel{width:100px;flex:none;font-size:11.5px}
+  #pathBox{flex:1;min-width:100px;max-width:430px}
+  #searchBox{width:190px;flex:none}
+  .app{flex:1;min-height:0;height:auto}
+  .side-top{display:none}
+  .side-hd{min-height:28px;padding:3px 8px;gap:5px;font-size:11px;flex:none;border-bottom:1px solid var(--line)}
+  #tabbar{height:32px;flex:none;display:flex;align-items:center;gap:6px;padding:0 8px;background:var(--bg);border-bottom:1px solid var(--line)}
+  #tabs{height:auto;flex:0 1 auto;min-width:0;display:flex;align-items:center;gap:2px;padding:0;overflow-x:auto;background:transparent;border:0}
+  .tab{height:24px;padding:0 9px;max-width:190px;gap:6px;font-size:11.5px;align-items:center;border:1px solid var(--line);border-radius:6px;background:var(--page);flex:none;align-self:center}
+  .tab.on{background:var(--blue-bg);border-color:var(--blue);color:var(--blue)}
+  .tab .x{font-size:13px}
+  #tools{margin-left:auto;display:flex;align-items:center;gap:5px;flex:none}
+  #tools button{padding:3px 8px;font-size:11px}
+  .path{font-size:11.5px;color:var(--muted);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  #fPath{flex:0 1 auto;min-width:0;max-width:50vw}
+  .office-tip{max-width:200px;padding:2px 7px;font-size:11px}
+  .pdfFrame{height:calc(100vh - 146px)}
+  textarea.src{min-height:calc(100vh - 190px)}
+  footer{height:26px;flex:none;gap:10px;font-size:11px}
+  footer span{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;min-width:0}
+  footer .grow{flex:1;min-width:6px}
+  #fKind,#fPath,#fFidelity,#fOffice,.lnk{flex:0 1 auto}
+  #fFidelity{max-width:30vw}
+  #fOffice{max-width:34vw}
+  /* 服务断开提示条：只在异常时出现，正常情况下不占任何高度 */
+  #svcWarn{display:none;flex:none;align-items:center;gap:9px;padding:5px 10px;background:var(--red-bg);color:var(--red);border-bottom:1px solid #eab7b7;font-size:11.5px}
+  #svcWarn b{white-space:nowrap}
+  #svcWhy{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  #svcWarn button{padding:2px 8px;font-size:11px;border-color:#eab7b7;color:var(--red);background:#fff}
+  .row.down{color:var(--red);white-space:normal;line-height:1.6}
+  .lnk{font-size:10.5px;color:var(--muted);opacity:.65;cursor:pointer;white-space:nowrap;flex:none}
+  .lnk:hover{color:var(--red);opacity:1}
+
+  /* ===== 并排对比：两栏各自是独立滚动容器，鼠标停在哪个文件上就滚哪个 ===== */
+  #stage{display:flex;overflow:hidden;background:var(--page)}
+  .pane{flex:1 1 100%;min-width:0;height:100%;position:relative;overflow:auto;background:var(--page)}
+  #paneR,#splitter{display:none}
+  #stage.split #paneR{display:block}
+  #stage.split #splitter{display:block}
+  #splitter{flex:0 0 6px;background:var(--line);border-left:1px solid var(--line2);border-right:1px solid var(--line2);cursor:col-resize}
+  #splitter:hover{background:var(--blue)}
+  .pane-cap{display:none;position:sticky;top:0;z-index:5;height:26px;align-items:center;gap:8px;padding:0 10px;background:var(--bg);border-bottom:1px solid var(--line);font-size:11px;color:var(--muted);cursor:pointer;user-select:none}
+  #stage.split .pane-cap{display:flex}
+  .pane-cap .cap-name{font-weight:600;color:var(--text);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:72%}
+  .pane-cap .cap-hint{margin-left:auto;flex:none;opacity:.7}
+  .pane.focus .pane-cap{background:var(--blue-bg);border-bottom-color:var(--blue)}
+  .pane.focus .pane-cap .cap-name{color:var(--blue)}
+  .pane.focus{box-shadow:inset 0 0 0 2px var(--blue-bg)}
+  /* iframe 的百分比高度需要父容器有确定高度，否则会掉回默认的 150px */
+  .wrap.frame-host{padding:0;max-width:none;height:100%}
+  #stage.split .wrap.frame-host{padding:0;height:calc(100% - 26px)}
+  .pane iframe.pdfFrame,.pane iframe.htmlFrame{display:block;width:100%;height:100%;border:0;background:#fff}
+  #stage.split .empty.pane-empty{padding:44px 12px}
+  #stage.split .wrap:not(.frame-host){padding:10px 12px 24px;max-width:none}
+  #stage.split .paper{padding:16px 18px}
+  .tab.in-split{border-style:dashed}
+  /* Markdown 增强：本地图片 + 离线 mermaid 图 */
+  .mdHtml img{max-width:100%;height:auto;border-radius:6px}
+  .mdHtml .img-missing-tip{display:inline-block;font-size:12px;color:var(--muted);border:1px dashed var(--line2);border-radius:6px;padding:6px 10px;margin:4px 0}
+  .mdHtml .mermaid-box{overflow:auto;background:var(--page);border:1px solid var(--line);border-radius:8px;padding:14px 12px;margin:12px 0;text-align:center}
+  .mdHtml .mermaid-box .mermaid{display:inline-block;max-width:100%}
+  .mdHtml .mermaid-box svg{max-width:100%!important;height:auto}
+  .mdHtml .mermaid-fallback{white-space:pre-wrap;text-align:left;font:12.5px/1.6 Consolas,ui-monospace,monospace;color:var(--muted)}
+</style>
+</head>
+<body>
+<header>
+  <div class="brand">UniView</div>
+  <select id="rootSel" onchange="onRootChange(this.value)" title="切换根目录；最后一项可浏览任意文件夹"></select>
+  <input type="text" id="pathBox" placeholder="输入目录或文件完整路径，回车打开" title="输入目录或文件完整路径，回车打开" onkeydown="if(event.key==='Enter')openPath(this.value)">
+  <input type="text" id="searchBox" placeholder="跨格式全文搜索" title="跨格式全文搜索（含 Word / Excel / PPT 正文）">
+  <button onclick="doSearch()">搜索</button>
+</header>
+<div id="svcWarn">
+  <b>本地服务已停止</b>
+  <span id="svcWhy">连接不到本地服务，页面上的操作暂时不可用</span>
+  <button onclick="retryService()">重试连接</button>
+  <button onclick="window.close()">关闭本窗口</button>
+</div>
+
+<div class="app">
+  <aside>
+    <div class="side-hd"><span class="hd-text" id="sideHd">文件</span><button id="bCollapse" onclick="collapseAll()" title="收起所有已展开的文件夹；展开某个文件夹时会同时收起同级其它分支，目录不会被文件挤走">全部收起</button><label title="勾选后列出所有文件；默认只列出本软件能打开的"><input type="checkbox" id="showAll" onchange="toggleFilter()">全部</label></div>
+    <div id="tree"></div>
+    <div id="results" style="display:none"></div>
+  </aside>
+
+  <main>
+    <div id="tabbar">
+      <div id="tabs"></div>
+      <div id="tools">
+        <div class="office-tip" id="officeTip" style="display:none"></div>
+        <button id="bMode" onclick="toggleMode()" disabled style="display:none">预览</button>
+        <button id="bCsv" onclick="toggleCsv()" disabled style="display:none">表格视图</button>
+        <button onclick="mdFormat('**','**')" id="bBold" disabled style="display:none">加粗</button>
+        <button onclick="mdFormat('# ','')" id="bHead" disabled style="display:none">标题</button>
+        <button id="bEdit" onclick="toggleEdit()" disabled style="display:none">编辑</button>
+        <button id="bSave" class="primary" onclick="save()" disabled style="display:none">保存</button>
+        <button id="bNative" onclick="useWps()" disabled style="display:none">用 WPS 嵌入</button>
+        <button id="bEmbed" onclick="reEmbed()" disabled style="display:none">重新嵌入</button>
+        <button id="bBack" onclick="backBuiltin()" disabled style="display:none">内置预览</button>
+        <button id="bExternal" onclick="openExternal()" disabled style="display:none">独立窗口打开</button>
+        <button id="bSplit" onclick="toggleSplit()" disabled title="需先打开至少两个文件才能并排对比">并排打开</button>
+      </div>
+    </div>
+    <div id="stage">
+      <div class="pane" id="paneL">
+        <div class="pane-cap"><span class="cap-name">左栏</span><span class="cap-hint">点此切换操作对象</span></div>
+        <div class="empty pane-empty"><div class="big">▤</div>从左侧选择一个文件，或在上方输入完整路径<br><span style="font-size:12px">HTML 直接在窗口内渲染；md / TXT 可编辑写回；Office 默认内置预览</span></div>
+        <div class="wrap pane-view" style="display:none"></div>
+        <div class="pane-office" style="display:none"><div class="ph">正在把 WPS 文档窗口放入这里…<br>若长时间空白，点上方「内置预览」返回，或「独立窗口打开」。</div></div>
+      </div>
+      <div id="splitter" title="拖动调整左右宽度"></div>
+      <div class="pane" id="paneR">
+        <div class="pane-cap"><span class="cap-name">右栏</span><span class="cap-hint">点此切换操作对象</span></div>
+        <div class="empty pane-empty"><div class="big">▤</div>从左侧选择一个文件，或在上方输入完整路径<br><span style="font-size:12px">并排模式下，两栏各自独立滚动，互不影响</span></div>
+        <div class="wrap pane-view" style="display:none"></div>
+        <div class="pane-office" style="display:none"><div class="ph">正在把 WPS 文档窗口放入这里…</div></div>
+      </div>
+    </div>
+  </main>
+</div>
+
+<footer>
+  <span id="fKind">就绪</span><span class="grow"></span>
+  <span class="path" id="fPath">未打开文件</span><span class="grow"></span>
+  <span id="fFidelity">—</span><span class="grow"></span>
+  <span id="fOffice">WPS 嵌入：未启用</span>
+  <span class="lnk" onclick="quit()" title="结束后台服务；平时不用点，直接关窗口即可">结束服务</span>
+</footer>
+<div id="toast"></div>
+
+<script src="/vendor/marked.min.js"></script>
+<script src="/vendor/mermaid.min.js"></script>
+<script src="/vendor/jszip.min.js"></script>
+<script src="/vendor/xlsx.full.min.js"></script>
+<script>
+const T = new URLSearchParams(location.search).get('t') || '';
+const api = (p) => '/api/' + p + (p.includes('?') ? '&' : '?') + 't=' + encodeURIComponent(T);
+const $=id=>document.getElementById(id);
+let ROOT='', TABS=[], ACTIVE=null, TAG='', HTML_KEY='', SEARCH_MODE=false, SHOW_ALL=false, SVC_DOWN=false;
+let SPLIT=false, FOCUS='L', LEFT_ID=null, RIGHT_ID=null, PREV_ID=null, SPLIT_PCT=50;
+const state={hostRect:null, ro:null};
+const PANES={L:null,R:null};
+const EMPTY_HTML='<div class="big">▤</div>从左侧选择一个文件，或在上方输入完整路径<br><span style="font-size:12px">HTML 直接在窗口内渲染；md / TXT 可编辑写回；Office 默认内置预览</span>';
+
+/* ---- 双栏上下文：每个 pane 都是独立滚动容器，鼠标停在哪栏就滚哪栏 ---- */
+function mkPane(id,side){
+  const el=$(id);
+  return {el,side,cap:el.querySelector('.pane-cap'),capName:el.querySelector('.cap-name'),
+          empty:el.querySelector('.pane-empty'),va:el.querySelector('.pane-view'),
+          oh:el.querySelector('.pane-office'),sig:'',q:s=>el.querySelector(s)};
+}
+function initPanes(){PANES.L=mkPane('paneL','L');PANES.R=mkPane('paneR','R')}
+function tabById(id){return TABS.find(t=>t.id===id)||null}
+function leftTab(){return tabById(LEFT_ID)}
+function rightTab(){return tabById(RIGHT_ID)}
+function paneForTab(t){
+  if(SPLIT&&t){if(t.id===RIGHT_ID)return PANES.R;if(t.id===LEFT_ID)return PANES.L}
+  return PANES.L;
+}
+function activePane(){return SPLIT?(FOCUS==='R'?PANES.R:PANES.L):PANES.L}
+function needHost(){const t=cur();return !!(t&&t.kind==='office'&&t.embedded)}
+
+/* ---- HTML 隔离渲染地址：钥匙与 API 令牌分开，沙箱页面拿不到真令牌 ---- */
+function htmlEnc(p){
+  return btoa(unescape(encodeURIComponent(p))).replace(/\+/g,'-').replace(/\//g,'_').replace(/=+$/,'');
+}
+function htmlUrl(t){return '/html/'+encodeURIComponent(HTML_KEY)+'/'+htmlEnc(t.path)}
+
+/* ---- 并排对比 ---- */
+function refreshSplitBtn(){
+  const b=$('bSplit');if(!b)return;
+  b.disabled=TABS.length<2;
+  b.classList.toggle('on',SPLIT);
+  b.textContent=SPLIT?'退出并排':'并排打开';
+  b.title=TABS.length<2?'需先打开至少两个文件才能并排对比'
+         :(SPLIT?'回到单栏，当前文件保持不动':'当前文件放右栏，另一份已打开的文件放左栏');
+}
+function applySplitWidth(){
+  if(!PANES.L)return;
+  if(!SPLIT){PANES.L.el.style.flex='1 1 100%';PANES.R.el.style.flex='0 0 0';return}
+  PANES.L.el.style.flex='0 0 '+SPLIT_PCT+'%';
+  PANES.R.el.style.flex='1 1 auto';
+}
+function updateCaps(){
+  [[PANES.L,leftTab(),'左'],[PANES.R,rightTab(),'右']].forEach(([P,t,label])=>{
+    if(!P)return;
+    P.capName.textContent=(SPLIT?label+' · ':'')+(t?t.name:'未打开文件');
+    P.el.classList.toggle('focus',SPLIT&&((P.side==='R'&&FOCUS==='R')||(P.side==='L'&&FOCUS==='L')));
+  });
+}
+function setFocus(side){
+  if(!SPLIT||FOCUS===side)return;
+  FOCUS=side;
+  const id=side==='R'?RIGHT_ID:LEFT_ID;
+  if(id){PREV_ID=ACTIVE;ACTIVE=id}
+  // 只更新标签/工具/栏标题，不重建文档区，避免打断另一栏的滚动与光标
+  renderTabs();renderTools(cur());updateCaps();
+}
+function toggleSplit(){
+  if(TABS.length<2){toast('请先打开至少两个文件，再并排对比');return}
+  if(!SPLIT){
+    let other=tabById(PREV_ID);
+    if(!other||other.id===ACTIVE){
+      const rest=TABS.filter(t=>t.id!==ACTIVE);
+      other=rest.length?rest[rest.length-1]:null;
+    }
+    if(!other){toast('请先打开至少两个文件');return}
+    leaveOffice();
+    // 并排时 WPS 原生窗口只能贴住一侧，统一回到内置预览
+    TABS.forEach(t=>{if(t.kind==='office'){t.officeMode='builtin';t.embedded=false;t.embedPending=false}});
+    state.officeActive=false;
+    LEFT_ID=other.id;RIGHT_ID=ACTIVE;
+    SPLIT=true;FOCUS='R';ACTIVE=RIGHT_ID;   // 当前正在看的文件放右栏
+  }else{
+    ACTIVE=(FOCUS==='R'?RIGHT_ID:LEFT_ID)||ACTIVE;
+    SPLIT=false;FOCUS='L';LEFT_ID=RIGHT_ID=null;
+  }
+  $('stage').classList.toggle('split',SPLIT);
+  applySplitWidth();renderTabs();render();
+}
+function bindPanes(){
+  initPanes();
+  [PANES.L,PANES.R].forEach(P=>{
+    P.cap.addEventListener('click',()=>setFocus(P.side));
+    P.el.addEventListener('mousedown',()=>setFocus(P.side));
+  });
+}
+function bindSplitter(){
+  const sp=$('splitter');let dragging=false;
+  sp.addEventListener('mousedown',e=>{dragging=true;e.preventDefault();document.body.style.cursor='col-resize'});
+  window.addEventListener('mousemove',e=>{
+    if(!dragging)return;
+    const r=$('stage').getBoundingClientRect();
+    SPLIT_PCT=Math.max(20,Math.min(80,(e.clientX-r.left)/r.width*100));
+    applySplitWidth();
+  });
+  window.addEventListener('mouseup',()=>{
+    if(!dragging)return;dragging=false;document.body.style.cursor='';
+    if(needHost())layoutHost();
+    reportSession();   // 并排宽度也是会话的一部分
+  });
+}
+
+function toast(msg,ms){const t=$('toast');t.textContent=msg;t.style.opacity=1;clearTimeout(t._h);t._h=setTimeout(()=>t.style.opacity=0,ms||2600)}
+/* 后台服务一旦结束，旧窗口仍在，所有请求都会变成 Failed to fetch。
+   统一识别这类失败，给出可操作的提示，不再把原始异常丢进文件树里。 */
+function svcDown(why){
+  if(SVC_DOWN)return;
+  SVC_DOWN=true;
+  document.title='UniView';
+  $('svcWarn').style.display='flex';
+  $('svcWhy').textContent=(why||'连接不到本地服务')+' · 请双击桌面 UniView 图标（或 start.bat）重新打开，本窗口可关闭';
+}
+function svcUp(){
+  SVC_DOWN=false;$('svcWarn').style.display='none';
+  document.title='UniView';
+}
+function svcHint(e){
+  return SVC_DOWN?'本地服务已停止 · 请看窗口顶部的红色提示，或点「重试连接」'
+                 :'读取失败：'+esc(e.message);
+}
+function downGuard(){
+  if(SVC_DOWN){toast('本地服务已停止，请看窗口顶部的红色提示',3500);return true}
+  return false;
+}
+async function retryService(){
+  try{
+    const r=await fetch(api('ping'),{cache:'no-store'});
+    if(r.ok){svcUp();toast('已恢复连接');if(ROOT)loadTree(ROOT);else location.reload();return}
+  }catch(e){}
+  toast('服务还没启动：请双击 start.bat 打开新窗口（本窗口可关闭）',5000);
+}
+function netFail(){svcDown();throw new Error('本地服务已停止')}
+function authFail(){svcDown('访问凭证已失效（服务重启过）');throw new Error('访问凭证已失效，请打开新窗口')}
+async function get(url){
+  let r;try{r=await fetch(url)}catch(e){netFail()}
+  if(r.status===401)authFail();
+  if(!r.ok)throw new Error((await r.json().catch(()=>({error:r.status}))).error||r.status);
+  return r.json();
+}
+async function post(url,body){
+  let r;
+  try{r=await fetch(url,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)})}catch(e){netFail()}
+  if(r.status===401)authFail();
+  return r.json();
+}
+
+/* ---------------- 启动 ---------------- */
+/* ---------------- 根目录：此电脑 / 记住选过的目录 / 浏览文件夹 ---------------- */
+const THIS_PC='__UNIVIEW_THIS_PC__';
+const BROWSE_ROOT='__UNIVIEW_BROWSE__';
+const MAX_CUSTOM_ROOTS=15;   // 下拉只保留最近 15 个记住的目录，与后端 MAX_CUSTOM_ROOTS 一致
+let CUSTOM_ROOTS=[];   // 后端持久化在 %APPDATA%\UniView\roots.json，由 /api/boot 下发
+let PRESET_ROOTS=new Set();   // 固定的预设目录，不参与 15 个的裁剪
+let ROOT_SEL_PREV='';
+function rootLabel(p){
+  if(p===THIS_PC)return '此电脑';
+  return (String(p||'').replace(/[\\\/]+$/,'').split(/[\\\/]/).pop()||p);
+}
+function selHas(sel,v){return !!sel&&Array.from(sel.options).some(o=>o.value===v)}
+/* 自定义项 = 非预设、非「此电脑」、非「浏览…」、非分隔线的目录项 */
+function isCustomOption(o){
+  return !!o&&!o.disabled&&!o.dataset.preset&&o.value!==BROWSE_ROOT&&o.value!==THIS_PC;
+}
+function customAnchor(sel){   // 自定义项统一放在分隔线之前
+  if(!sel)return null;
+  const os=Array.from(sel.options);
+  return os.find(o=>o.disabled)||os.find(o=>o.value===BROWSE_ROOT)||null;
+}
+function enforceRootLimit(sel,limit){
+  if(!sel)return;
+  const cs=Array.from(sel.options).filter(isCustomOption);
+  cs.slice(0,Math.max(0,cs.length-limit)).forEach(o=>o.remove());
+}
+function addRootOption(sel,p,name){
+  enforceRootLimit(sel,MAX_CUSTOM_ROOTS-1);   // 给新项留一个位置，超出的挤掉最旧
+  const o=document.createElement('option');o.value=p;o.textContent=name||rootLabel(p);o.title=p;
+  const a=customAnchor(sel);
+  if(a)sel.insertBefore(o,a);else sel.appendChild(o);
+  return o;
+}
+function setSelValue(sel,v){
+  if(!sel||!v)return;
+  if(!selHas(sel,v))addRootOption(sel,v);
+  sel.value=v;
+}
+/* 后端返回的是截断后的真实列表：据此移除被挤掉的旧目录，并按「最近使用在最后」重排 */
+function syncCustomRootOptions(sel,list){
+  if(!sel)return;
+  CUSTOM_ROOTS=(Array.isArray(list)?list:[]).slice(-MAX_CUSTOM_ROOTS);
+  const allow=new Set(CUSTOM_ROOTS);
+  Array.from(sel.options).forEach(o=>{if(isCustomOption(o)&&!allow.has(o.value))o.remove()});
+  CUSTOM_ROOTS.forEach(p=>{
+    if(!selHas(sel,p))addRootOption(sel,p);
+    const o=Array.from(sel.options).find(x=>x.value===p),a=customAnchor(sel);
+    if(o&&a)sel.insertBefore(o,a);
+  });
+  enforceRootLimit(sel,MAX_CUSTOM_ROOTS);
+}
+async function addCustomRoot(p){
+  // 不能只写 localStorage：服务每次启动端口随机，浏览器按端口隔离存储，跨启动读不到
+  let done=false;
+  try{
+    const d=await post(api('roots/add'),{path:p});
+    if(d&&Array.isArray(d.roots)){syncCustomRootOptions($('rootSel'),d.roots);done=true}
+  }catch(e){}
+  if(!done){const sel=$('rootSel');if(sel&&!selHas(sel,p))addRootOption(sel,p)}
+}
+/* 后端已在 /api/boot 里剔除不存在的目录，这里只负责放回下拉 */
+function restoreCustomRoots(sel,list){
+  syncCustomRootOptions(sel,list);
+}
+function addBrowseOption(sel){
+  if(selHas(sel,BROWSE_ROOT))return;
+  const sep=document.createElement('option');sep.disabled=true;sep.textContent='──────────';
+  sel.appendChild(sep);
+  const o=document.createElement('option');o.value=BROWSE_ROOT;
+  o.textContent='浏览其他文件夹…';
+  o.title='打开系统文件夹选择窗口，可从「此电脑」展开 C:/D: 盘';
+  sel.appendChild(o);
+}
+async function onRootChange(v){
+  const sel=$('rootSel');
+  if(v===BROWSE_ROOT){
+    setSelValue(sel,ROOT_SEL_PREV);   // 先还原，避免下拉停在「浏览…」这个伪选项上
+    toast('正在打开文件夹选择窗口…');
+    try{
+      const d=await post(api('browse-folder'),{});
+      if(d&&d.path){
+        await addCustomRoot(d.path);ROOT_SEL_PREV=d.path;
+        setSelValue(sel,d.path);
+        await setRoot(d.path);
+        toast('已切换到 '+rootLabel(d.path)+'（已记住，下次启动仍可选）',4000);
+      }else if(d&&d.error){toast('选择文件夹失败：'+d.error,5000)}
+      else{toast('已取消选择文件夹')}
+    }catch(e){toast('选择文件夹失败：'+e.message,5000)}
+    return;
+  }
+  ROOT_SEL_PREV=v;
+  await setRoot(v);
+}
+
+(async function boot(){
+  try{
+    const b=await get(api('boot'));
+    TAG=b.titleTag||'';HTML_KEY=b.htmlKey||'';
+    document.title='UniView';   // 标题只留 UniView；随机标记只由后端内部用来认窗口
+    const sel=$('rootSel');
+    b.roots.forEach((r,i)=>{const o=document.createElement('option');o.value=r.path;o.textContent=r.name;o.dataset.preset='1';sel.appendChild(o)});
+    PRESET_ROOTS=new Set(b.roots.map(r=>r.path));
+    restoreCustomRoots(sel,b.customRoots);   // 上次选过的目录（后端读取），先于分隔线放回
+    addBrowseOption(sel);                     // 下拉最后一项：浏览其他文件夹…
+    // 启动目录优先级：URL ?root= > 上次记住的目录 > 桌面 > 默认示例目录
+    let saved='';try{saved=localStorage.getItem('uniview.root')||''}catch(e){}
+    const fromUrl=new URLSearchParams(location.search).get('root');
+    let start=fromUrl||saved;
+    // 已被 15 个上限挤出去的旧目录不再当启动根，免得它又被塞回下拉
+    if(start&&!fromUrl&&!PRESET_ROOTS.has(start)&&
+       !CUSTOM_ROOTS.some(x=>x.toLowerCase()===start.toLowerCase()))start='';
+    if(!start){
+      const desk=b.roots.find(r=>/Desktop|桌面/i.test(r.path)||/Desktop|桌面/i.test(r.name));
+      start=desk?desk.path:(b.roots.length?b.roots[0].path:'');
+    }
+    if(start)await setRoot(start);
+    // 恢复上次会话（打开的文件/并排布局），再从「打开方式」参数打开指定文件
+    await restoreSession();
+    const wantFile=new URLSearchParams(location.search).get('file');
+    if(wantFile)await openPath(wantFile);
+    $('fOffice').textContent='WPS 组件：'+(b.wps?'已找到':'未找到')+' · 原生嵌入按需启用（默认不启动 WPS）';
+  }catch(e){svcDown('启动时连接不到本地服务');toast('启动失败：'+e.message,6000)}
+})();
+
+/* ---------------- 会话保存/恢复：关窗或真退出后，下次启动自动重开上次的标签 ---------------- */
+let SES_T=null;
+function reportSession(){
+  clearTimeout(SES_T);
+  SES_T=setTimeout(()=>{
+    if(SVC_DOWN)return;
+    const act=cur(),L=leftTab(),R=rightTab();
+    post(api('session'),{v:1,tabs:TABS.map(t=>t.path),active:act?act.path:'',
+      split:{on:SPLIT,left:L?L.path:'',right:R?R.path:'',focus:FOCUS,pct:SPLIT_PCT},
+      savedAt:Date.now()}).catch(()=>{});
+  },400);
+}
+async function restoreSession(){
+  let s;try{s=(await get(api('session'))).session}catch(e){return}
+  if(!s||!Array.isArray(s.tabs)||!s.tabs.length)return;
+  let opened=0;
+  for(const p of s.tabs){
+    if(TABS.some(t=>t.path.toLowerCase()===p.toLowerCase()))continue;
+    try{await openFile(p);opened++}catch(e){}
+  }
+  if(!opened)return;
+  const sp=s.split||{};
+  if(sp.on&&TABS.length>=2){
+    const L=TABS.find(t=>t.path===sp.left),R=TABS.find(t=>t.path===sp.right);
+    if(L&&R&&L.id!==R.id){
+      SPLIT=true;LEFT_ID=L.id;RIGHT_ID=R.id;FOCUS=sp.focus==='L'?'L':'R';
+      SPLIT_PCT=Math.max(20,Math.min(80,sp.pct||50));
+      ACTIVE=FOCUS==='R'?RIGHT_ID:LEFT_ID;
+      $('stage').classList.add('split');applySplitWidth();
+    }else{
+      const act=TABS.find(t=>t.path===s.active);if(act)ACTIVE=act.id;
+    }
+  }else{
+    const act=TABS.find(t=>t.path===s.active);if(act)ACTIVE=act.id;
+  }
+  renderTabs();render();
+  toast('已恢复上次打开的 '+opened+' 个文件');
+}
+
+/* ---------------- 「打开方式」多文件 → 同一窗口多标签 ----------------
+   后续文件由服务端排队，当前窗口轮询取回后开成新标签，不再逐个新开窗口。 */
+async function pollPending(){
+  if(SVC_DOWN)return;
+  try{
+    const d=await get(api('pending'));
+    if(d.files&&d.files.length){
+      for(const p of d.files){await openPath(p)}
+      toast('已在当前窗口打开 '+d.files.length+' 个文件');
+    }
+  }catch(e){}
+}
+pollPending();
+setInterval(pollPending,1200);
+
+/* ---------------- 文件树 ---------------- */
+function fmtSize(n){return n<1024?n+' B':n<1048576?(n/1024).toFixed(1)+' KB':(n/1048576).toFixed(1)+' MB'}
+function esc(s){return String(s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]))}
+/* 与后端 VIEWABLE 保持一致；用于旧版服务（未重启）时前端兜底过滤 */
+const CAN_OPEN=new Set(('.txt .md .markdown .csv .tsv .log .ini .json .xml .yaml .yml .html .htm .css .js .ts .jsx .tsx .py .java .c .cpp .h .cs .go .rs .rb .php .sql .sh .bat .ps1 .toml .vue .svg '+
+  '.png .jpg .jpeg .gif .bmp .webp .ico .tif .tiff .pdf '+
+  '.doc .docx .xls .xlsx .ppt .pptx .wps .et .dps .rtf').trim().split(/\s+/));
+function isOpenable(it){
+  if(it.dir)return true;
+  if(it.viewable===false)return false;
+  if(it.viewable===true)return true;
+  return CAN_OPEN.has(String(it.ext||'').toLowerCase());
+}
+function toggleFilter(){
+  if(downGuard())return;
+  SHOW_ALL=$('showAll').checked;
+  loadTree(ROOT);
+  toast(SHOW_ALL?'已显示全部文件（灰色项无法在软件内打开）':'已隐藏无法打开的文件');
+}
+async function fetchTree(path,all){
+  const d=await get(api('tree?path='+encodeURIComponent(path)+(all?'&all=1':'')));
+  if(d.error)throw new Error(d.error);
+  return d;
+}
+function makeRow(it,depth,isDir,onClick){
+  const row=document.createElement('div');
+  row.className='row'+(isDir?' dir':'')+(it.viewable===false?' dim':'');
+  row.style.paddingLeft=(8+depth*8)+'px';
+  row._it=it;row._depth=depth;
+  row.innerHTML='<span class="ic">'+(isDir?'▸':'·')+'</span><span class="nm">'+esc(it.name)+'</span>'+
+    (isDir?'<span class="kids"></span>'
+          :'<span class="badge'+(it.viewable?'':' off')+'" title="'+(it.viewable?'可在软件内打开':'无法在软件内打开，可交给系统默认程序')+'">'+esc(it.ext||'?')+'</span>');
+  row.title=it.path+(isDir?'　（文件夹 · 点击展开，下方查看其中的文件）':' · '+fmtSize(it.size));
+  row.onclick=onClick;
+  return row;
+}
+/* 单列表树：文件夹和文件在同一棵树里，展开哪个文件夹就看到它自己的文件 */
+function dirRow(it,depth){
+  let row;
+  row=makeRow(it,depth,true,()=>toggleDir(row,it,depth));
+  return row;
+}
+/* 渲染某个文件夹的内容：子文件夹在前、文件在后，保证目录不会被一堆文件挤到后面 */
+async function renderChildren(box,path,depth){
+  const d=await fetchTree(path,SHOW_ALL);
+  const all=d.items||[];
+  const dirs=all.filter(i=>i.dir);
+  const files=(SHOW_ALL?all:all.filter(isOpenable)).filter(i=>!i.dir);
+  dirs.forEach(it=>box.appendChild(dirRow(it,depth)));
+  files.forEach(it=>box.appendChild(makeRow(it,depth,false,()=>openPath(it.path))));
+  const hidden=(all.length-dirs.length-files.length)+(d.hidden||0);
+  if(!dirs.length&&!files.length){
+    box.innerHTML='<div class="row" style="color:var(--muted);white-space:normal;line-height:1.7">'+
+      (hidden?'（这里没有可打开的文件 · 已隐藏 '+hidden+' 个）':'（空文件夹）')+'</div>';
+  }
+  return {dirs:dirs.length,files:files.length,hidden:hidden};
+}
+function collapseRow(row){
+  let n=row.nextElementSibling;
+  while(n&&n.dataset.child==='1'){const t=n.nextElementSibling;n.remove();n=t}
+  row._open=false;
+  const ic=row.querySelector('.ic');if(ic)ic.textContent='▸';
+  const k=row.querySelector('.kids');if(k)k.textContent='';
+}
+async function toggleDir(row,it,depth){
+  if(downGuard())return;
+  if(row._open){collapseRow(row);return}
+  /* 手风琴：展开一个文件夹时收起同级其它已展开分支，文件再多也不会把后面的目录挤出视野 */
+  Array.from(row.parentElement.children).forEach(c=>{
+    if(c!==row&&c.classList&&c.classList.contains('row')&&c.classList.contains('dir')&&c._open)collapseRow(c);
+  });
+  row._open=true;row.querySelector('.ic').textContent='▾';
+  const box=document.createElement('div');box.dataset.child='1';row.after(box);
+  box.innerHTML='<div class="row" style="color:var(--muted)">读取中…</div>';
+  try{
+    box.innerHTML='';
+    const info=await renderChildren(box,it.path,depth+1);
+    const k=row.querySelector('.kids');
+    if(k)k.textContent=(info.dirs?info.dirs+' 个子目录 · ':'')+info.files+' 个文件'+(info.hidden?' · 隐藏 '+info.hidden:'');
+    $('sideHd').textContent='当前展开 · '+it.name;
+    $('sideHd').title=it.path;
+  }catch(e){box.innerHTML='<div class="row down">'+svcHint(e)+'</div>'}
+}
+async function loadTree(p){
+  if(downGuard())return;
+  const host=$('tree');host.innerHTML='<div class="row" style="color:var(--muted)">读取中…</div>';
+  SEARCH_MODE=false;$('results').style.display='none';host.style.display='block';
+  try{
+    host.innerHTML='';
+    const info=await renderChildren(host,p,0);
+    $('sideHd').textContent=rootLabel(p)+' · '+info.dirs+' 个文件夹 / '+info.files+' 个文件';
+    $('sideHd').title=p;
+  }catch(e){host.innerHTML='<div class="row down">'+svcHint(e)+'</div>'}
+}
+function collapseAll(){
+  Array.from($('tree').querySelectorAll('.row.dir')).forEach(r=>{if(r._open&&r.isConnected)collapseRow(r)});
+  $('sideHd').textContent=rootLabel(ROOT);
+  toast('已收起所有文件夹');
+}
+/* 目录树由 loadTree / renderChildren / toggleDir 统一渲染，不再拆分区域 */
+async function setRoot(p){
+  if(downGuard())return;
+  ROOT=p;$('pathBox').value=(p===THIS_PC?'此电脑':p);
+  try{localStorage.setItem('uniview.root',p)}catch(e){}
+  setSelValue($('rootSel'),p);
+  ROOT_SEL_PREV=p;
+  await loadTree(p);
+}
+async function openPath(p){
+  p=(p||'').trim().replace(/^"|"$/g,'');
+  if(!p)return;
+  if(downGuard())return;
+  if(!p.includes('\\')&&!p.includes('/')){toast('请填写完整路径，例如 C:\\Users\\...\\文件.md');return}
+  // 后端能列目录说明是目录，否则按文件打开（浏览器拿不到绝对路径，故走本地桥判断）
+  try{
+    const d=await get(api('tree?path='+encodeURIComponent(p)));
+    if(!d.error){setRoot(p);return}
+  }catch(e){}
+  // 确认不是目录后再判扩展名：手动输入无法打开的文件时，不再弹出「暂不支持」的空标签
+  const nm=p.split(/[\\/]/).pop()||'';
+  const ext=nm.includes('.')?('.'+nm.split('.').pop().toLowerCase()):'';
+  if(!SHOW_ALL&&ext&&!CAN_OPEN.has(ext)){
+    toast('「'+nm+'」无法在软件内打开，已跳过；勾选左侧「全部」可交给系统默认程序');
+    return;
+  }
+  await openFile(p);
+}
+
+/* ---------------- 搜索 ---------------- */
+async function doSearch(){
+  const q=$('searchBox').value.trim();
+  if(!q){SEARCH_MODE=false;$('results').style.display='none';$('tree').style.display='block';$('sideHd').textContent=(ROOT.split(/[\\/]/).pop()||ROOT);$('sideHd').title=ROOT;return}
+  if(downGuard())return;
+  $('sideHd').textContent='搜索「'+q+'」';
+  try{
+    const d=await get(api('search?q='+encodeURIComponent(q)+'&root='+encodeURIComponent(ROOT)));
+    const box=$('results');box.innerHTML='';
+    if(!d.hits.length){box.innerHTML='<div class="row" style="color:var(--muted)">没有命中（已扫 '+d.scanned+' 个文件）</div>'}
+    d.hits.forEach(h=>{
+      const el=document.createElement('div');el.className='hit';
+      el.innerHTML='<b>'+esc(h.name)+'</b><span>'+esc(h.snippet)+'</span>';
+      el.title=h.path;el.onclick=()=>openFile(h.path);box.appendChild(el);
+    });
+    SEARCH_MODE=true;$('tree').style.display='none';box.style.display='block';
+    toast('扫描 '+d.scanned+' 个文件，命中 '+d.hits.length+' 个');
+  }catch(e){toast('搜索失败：'+e.message)}
+}
+$('searchBox').addEventListener('keydown',e=>{if(e.key==='Enter')doSearch()});
+
+/* ---------------- 标签 ---------------- */
+function renderTabs(){
+  const box=$('tabs');box.innerHTML='';
+  TABS.forEach(t=>{
+    const el=document.createElement('div');
+    el.className='tab'+(t.id===ACTIVE?' on':'')+(SPLIT&&(t.id===LEFT_ID||t.id===RIGHT_ID)?' in-split':'');
+    el.innerHTML='<span class="nm">'+(t.dirty?'● ':'')+esc(t.name)+'</span><span class="x">×</span>';
+    el.onclick=e=>{if(e.target.classList.contains('x')){closeTab(t.id)}else{switchTab(t.id)}};
+    box.appendChild(el);
+  });
+  refreshSplitBtn();
+  reportSession();   // 标签/激活/并排任何变化都会经过这里，防抖后落盘
+}
+function switchTab(id){
+  if(ACTIVE===id)return;
+  leaveOffice();
+  PREV_ID=ACTIVE;ACTIVE=id;
+  if(SPLIT){if(FOCUS==='R')RIGHT_ID=id;else LEFT_ID=id}
+  renderTabs();render();
+}
+function closeTab(id){
+  const t=TABS.find(x=>x.id===id);
+  if(t&&t.dirty&&!confirm('「'+t.name+'」有未保存的修改，确定关闭？'))return;
+  if(t&&t.kind==='office'){
+    t.embedded=false;t.embedPending=false;t.officeMode='builtin';
+    if(t.id===ACTIVE){state.officeActive=false;post(api('office/detach'),{})}
+  }
+  TABS=TABS.filter(x=>x.id!==id);
+  if(PREV_ID===id)PREV_ID=null;
+  if(ACTIVE===id)ACTIVE=TABS.length?TABS[TABS.length-1].id:null;
+  if(SPLIT&&(LEFT_ID===id||RIGHT_ID===id||TABS.length<2)){
+    // 分屏中的文件被关掉就直接回单栏，避免留下半边空栏
+    SPLIT=false;FOCUS='L';LEFT_ID=RIGHT_ID=null;
+    $('stage').classList.remove('split');applySplitWidth();
+  }
+  renderTabs();render();
+}
+function cur(){return TABS.find(t=>t.id===ACTIVE)||null}
+/* 嵌入的是原生 HWND，不受 CSS 控制：离开 Office 标签必须先 detach，否则会浮在别的文档上。
+   detach 与 embed 必须串行，否则两个并发请求乱序到达时，刚嵌入的窗口会被立刻还原。 */
+function leaveOffice(){
+  const o=cur();
+  if(o&&o.kind==='office'){o.embedded=false;o.embedPending=false;o.officeMode='builtin'}
+  if(state.officeActive){
+    state.officeActive=false;
+    state.detachP=post(api('office/detach'),{}).catch(()=>{});
+  }
+}
+async function ensureOffice(t){
+  if(!t||t.kind!=='office'||t.officeMode!=='wps'||t.embedded||t.embedPending)return;
+  t.embedPending=true;state.officeActive=true;
+  if(state.detachP){await state.detachP;state.detachP=null}
+  if(!t.embedPending||cur()!==t)return;   // 期间用户又切走了
+  try{await startOffice(t)}finally{t.embedPending=false}
+}
+
+function openFile(path){
+  if(downGuard())return;
+  const name=path.split(/[\\/]/).pop();
+  const ext=(name.split('.').pop()||'').toLowerCase();
+  let t=TABS.find(x=>x.path.toLowerCase()===path.toLowerCase());
+  if(!t){
+    t={id:'t'+(Date.now()+Math.random()),path,name,kind:'',text:'',encoding:'utf-8',
+       dirty:false,editing:false,mode:'source',csv:false,blobUrl:null,
+       officeMode:'builtin',builtinHtml:null,builtinSupport:['docx','xlsx','pptx','rtf'].includes(ext),
+       embedded:false,embedPending:false};
+    TABS.push(t);
+  }
+  leaveOffice();
+  PREV_ID=ACTIVE;ACTIVE=t.id;
+  if(SPLIT){if(FOCUS==='R')RIGHT_ID=t.id;else LEFT_ID=t.id}
+  renderTabs();
+  return loadCurrent();
+}
+
+async function loadCurrent(){
+  const t=cur();if(!t)return;
+  const P=paneForTab(t);
+  P.empty.style.display='none';$('officeTip').style.display='none';
+  render();
+  try{
+    const url='/api/raw?path='+encodeURIComponent(t.path)+'&t='+encodeURIComponent(T);
+    const ext=(t.name.split('.').pop()||'').toLowerCase();
+    // 由后端判定类型（与后端 kind_of 保持一致）
+    const meta=await post(api('classify'),{path:t.path}).catch(()=>null);
+    t.kind=(meta&&meta.kind)||guessKind(ext);
+    render();
+    // HTML 走隔离 iframe 自己加载；Office 默认内置预览，不启动 WPS
+    if(t.kind==='office'||t.kind==='rtf'||t.kind==='other'||t.kind==='html'){render();return}
+    if(t.kind==='image'){
+      const r=await fetch(url);const b=await r.blob();
+      if(t.blobUrl)URL.revokeObjectURL(t.blobUrl);
+      t.blobUrl=URL.createObjectURL(b);render();return;
+    }
+    if(t.kind==='pdf'){render();return}
+    const d=await get(api('text?path='+encodeURIComponent(t.path)));
+    t.text=d.text;t.encoding=d.encoding;t.size=d.size;render();
+  }catch(e){toast('打开失败：'+e.message,5000)}
+}
+function guessKind(ext){
+  if(ext==='html'||ext==='htm')return'html';
+  if('doc docx xls xlsx ppt pptx wps et dps'.split(' ').includes(ext))return'office';
+  if('png jpg jpeg gif bmp webp ico tif tiff'.split(' ').includes(ext))return'image';
+  if(ext==='pdf')return'pdf';
+  if('txt md markdown csv tsv log ini json xml yaml yml css js ts jsx tsx py java c cpp h cs go rs rb php sql sh bat ps1 toml vue svg'.split(' ').includes(ext))return'text';
+  return'other';
+}
+
+/* ---------------- 渲染：renderPane 画某一栏，renderTools 只服务于焦点栏 ---------------- */
+function showBtn(id,on,disabled,text){
+  const e=$(id);e.style.display=on?'':'none';e.disabled=!!disabled;
+  if(text!==undefined)e.textContent=text;
+}
+function paneSig(t){
+  if(!t)return '';
+  return [t.id,t.kind,t.mode,t.csv,t.editing?'1':'',t.officeMode,
+          t.blobUrl||'',t.builtinHtml?'H':'',(t.text||'').length].join('|');
+}
+function render(){
+  if(!PANES.L)initPanes();
+  if(SPLIT){
+    renderPane(PANES.L,leftTab());
+    renderPane(PANES.R,rightTab());
+  }else{
+    renderPane(PANES.L,cur());
+    PANES.R.empty.style.display='none';PANES.R.va.style.display='none';
+    PANES.R.oh.style.display='none';PANES.R.sig='';
+  }
+  renderTools(cur());updateCaps();refreshSplitBtn();
+}
+/* ---------- Markdown 增强：本地图片 + 离线 mermaid 流程图 ---------- */
+let MERMAID_OK=false;
+try{
+  if(typeof mermaid!=='undefined'&&typeof mermaid.initialize==='function'){
+    mermaid.initialize({startOnLoad:false,securityLevel:'loose',theme:'default',
+      flowchart:{htmlLabels:true,curve:'basis',useMaxWidth:true}});
+    MERMAID_OK=true;
+  }
+}catch(e){console.warn('[UniView] mermaid 初始化失败',e)}
+
+function mdDir(p){return String(p||'').replace(/[\\\/][^\\\/]*$/,'');}
+/* 把 md 里的相对路径按文档所在目录解析成 Windows 绝对路径（支持 ./ 与 ../） */
+function mdResolve(base,rel){
+  let r=String(rel).replace(/\//g,'\\');
+  let full=(/^[a-zA-Z]:/.test(r)||r.indexOf('\\\\')===0)?r:String(base).replace(/[\\\/]+$/,'')+'\\'+r;
+  const drive=/^[a-zA-Z]:/.test(full)?full.slice(0,2):'';
+  const rest=drive?full.slice(2):full;
+  const out=[];
+  for(const seg of rest.split(/[\\\/]+/)){
+    if(!seg||seg==='.')continue;
+    if(seg==='..'){if(out.length)out.pop();continue}
+    out.push(seg);
+  }
+  return drive+(drive?'\\':'')+out.join('\\');
+}
+/* 飞书/语雀导出的 md 常把流程图代码块标成 Plaintext 或不带语言标记，
+   所以除看 class 外还要按首行图语法识别，否则这类图永远只显示源码。 */
+function looksMermaid(src){
+  const s=String(src||'').trim();
+  if(!s)return false;
+  if(/^%%\{init/.test(s))return true;
+  const first=(s.split(/\r?\n/)[0]||'').trim();
+  if(/^(flowchart|graph)\s+(TD|TB|LR|RL|BT)\b/i.test(first))return true;
+  if(/^(sequenceDiagram|classDiagram|stateDiagram(-v2)?|erDiagram|gantt|pie|journey|gitGraph)\b/i.test(first))return true;
+  if(/^(flowchart|graph|subgraph)\b/i.test(first)&&/-->|-\.->|===/.test(s))return true;
+  return false;
+}
+function enhanceMd(box,t){
+  if(!box)return;
+  // 1) 图代码块 → mermaid 图形容器。直接改 DOM，不依赖 marked 的 renderer 版本；
+  //    textContent 已是实体解码后的原始图源码。
+  const codes=Array.from(box.querySelectorAll('pre > code')).filter(c=>{
+    const cl=String(c.className||'').toLowerCase();
+    return /language-(mermaid|mmd)\b/.test(cl)||looksMermaid(c.textContent);
+  });
+  codes.forEach(c=>{
+    const holder=document.createElement('div');holder.className='mermaid-box';
+    const g=document.createElement('div');g.className='mermaid';g.textContent=c.textContent||'';
+    holder.appendChild(g);
+    (c.closest('pre')||c).replaceWith(holder);
+  });
+  // 2) 相对路径图片 → 本地文件接口（marked 输出的 src 相对站点根解析，必然 404）；
+  //    网络图片交给浏览器自己加载，但加载失败要给出明确提示，不再是一片空白。
+  const base=mdDir(t.path);
+  box.querySelectorAll('img').forEach(img=>{
+    const src=(img.getAttribute('src')||'').trim();
+    if(!src)return;
+    const remote=/^(https?:|file:|about:)/i.test(src);
+    img.addEventListener('error',()=>{
+      if(img.dataset.mdDone)return;img.dataset.mdDone='1';
+      const tip=document.createElement('span');tip.className='img-missing-tip';
+      tip.textContent=(remote?'图片为网络链接，联网或登录源站后才能显示：':'图片未找到：')+src;
+      img.insertAdjacentElement('afterend',tip);img.style.display='none';
+    });
+    if(remote||/^(data:|blob:)/i.test(src))return;
+    let rel;
+    try{rel=decodeURIComponent(src.split('#')[0].split('?')[0]);}catch(e){rel=src;}
+    rel=rel.replace(/^\.\\+/,'').replace(/^\.\/+/,'');
+    img.setAttribute('data-md-src',src);
+    img.src='/api/raw?path='+encodeURIComponent(mdResolve(base,rel))+'&t='+encodeURIComponent(T);
+    img.loading='lazy';
+  });
+  // 3) 离线渲染 mermaid（库已随 exe 打包，不发任何网络请求）
+  if(codes.length){
+    const nodes=Array.from(box.querySelectorAll('.mermaid'));
+    if(MERMAID_OK){
+      try{const r=mermaid.init(nodes);if(r&&typeof r.catch==='function')r.catch(()=>{});}
+      catch(e){console.warn('[UniView] mermaid 渲染失败',e)}
+    }else{
+      nodes.forEach(n=>{n.className='mermaid-fallback'});
+    }
+    // 渲染失败（语法不支持 / 误判）时还原成代码块，别把普通代码吞掉
+    setTimeout(()=>{
+      nodes.forEach(n=>{
+        if(!n.isConnected||n.querySelector('svg'))return;
+        const pre=document.createElement('pre'),code=document.createElement('code');
+        code.textContent=n.textContent;pre.appendChild(code);n.replaceWith(pre);
+      });
+    },400);
+  }
+}
+
+function renderPane(P,t){
+  const va=P.va,oh=P.oh,empty=P.empty;
+  const sig=paneSig(t),changed=P.sig!==sig;
+  P.sig=sig;
+  // HTML / PDF 用 iframe 铺满整栏，父容器必须有确定高度；iframe 内部自己滚动
+  va.classList.toggle('frame-host',!!(t&&(t.kind==='html'||t.kind==='pdf')));
+  if(!t){
+    va.style.display='none';oh.style.display='none';empty.style.display='block';
+    if(changed)empty.innerHTML=EMPTY_HTML;
+    return;
+  }
+  empty.style.display='none';
+  if(t.kind===''){
+    oh.style.display='none';va.style.display='block';
+    if(changed)va.innerHTML='<div class="empty">正在打开 '+esc(t.name)+' …</div>';
+    return;
+  }
+  const editing=t.editing&&t.kind==='text';
+  const isMd=t.kind==='text'&&/\.(md|markdown)$/i.test(t.name);
+  const isCsv=/\.(csv|tsv)$/i.test(t.name);
+  const isOffice=t.kind==='office';
+  const isRtf=t.kind==='rtf';
+  const wpsMode=isOffice&&t.officeMode==='wps'&&!SPLIT;
+
+  if(isOffice||isRtf){
+    if(wpsMode){
+      va.style.display='none';oh.style.display='block';
+      layoutHost();ensureOffice(t);return;
+    }
+    oh.style.display='none';va.style.display='block';
+    if(changed){
+      if(!t.builtinSupport){
+        va.innerHTML='<div class="paper note-card"><h2>二进制 Office 格式</h2>'+
+          '<p>'+esc(t.name)+'（.doc / .xls / .ppt）无法在软件内解析预览。</p>'+
+          '<p>点上方「用 WPS 嵌入」把 WPS 收进本窗口，或「独立窗口打开」交给系统默认程序。</p></div>';
+      }else{
+        const hint=isRtf
+          ?'当前是 RTF 内置渲染：文字、图片与基本格式已还原，不保证与原生 100% 一致。要完全一致请点「独立窗口打开」交给 WPS。'
+          :'当前是内置预览：能看到文字与表格，但不保证分页、字体与图表。要 100% 与原生一致，点「用 WPS 嵌入」；编辑请在 WPS 里进行。';
+        va.innerHTML='<div class="mode-hint">'+hint+'</div>'+
+          '<div class="paper officePreview">'+(t.builtinHtml||'<div class="empty">正在解析文件…</div>')+'</div>';
+      }
+    }
+    if(t.builtinSupport&&!t.builtinHtml&&!t.builtinLoading)loadBuiltin(t);
+    return;
+  }
+
+  oh.style.display='none';va.style.display='block';
+  if(!changed)return;   // 内容未变就不重建：保留光标、iframe 与两栏各自的滚动位置
+  if(t.kind==='html'){
+    va.innerHTML='<iframe class="htmlFrame" sandbox="allow-scripts" src="'+esc(htmlUrl(t))+'"></iframe>';
+    return;
+  }
+  if(t.kind==='other'){
+    va.innerHTML='<div class="paper note-card"><h2>暂不支持在软件内预览</h2><p>'+esc(t.name)+'</p>'+
+      '<p>这类文件请点「独立窗口打开」交给系统默认程序。</p></div>';
+    return;
+  }
+  if(t.kind==='image'){
+    va.innerHTML='<div class="paper imgbox"><img src="'+esc(t.blobUrl||'')+'" alt="'+esc(t.name)+'"></div>';
+    return;
+  }
+  if(t.kind==='pdf'){
+    const u='/api/raw?path='+encodeURIComponent(t.path)+'&t='+encodeURIComponent(T)+'#view=FitH';
+    va.innerHTML='<iframe class="pdfFrame" src="'+u+'"></iframe>';
+    return;
+  }
+  // 文本类
+  if(t.csv&&isCsv){
+    va.innerHTML='<div class="paper">'+csvTable(t.text,t.name)+'</div>';
+  }else if(t.mode==='preview'&&isMd&&!editing){
+    va.innerHTML='<div class="paper mdHtml">'+marked.parse(t.text)+'</div>';
+    enhanceMd(va.querySelector('.mdHtml'),t);
+  }else{
+    va.innerHTML='<textarea class="src" spellcheck="false" '+(editing?'':'readonly')+'></textarea>';
+    const ta=va.querySelector('textarea.src');ta.value=t.text;
+    ta.oninput=()=>{t.text=ta.value;t.dirty=true;renderTabs();$('bSave').disabled=false;$('fKind').innerHTML='<b>已修改</b> · 未保存'};
+  }
+}
+
+function renderTools(t){
+  ['bMode','bCsv','bBold','bHead','bEdit','bSave','bEmbed','bExternal','bNative','bBack']
+    .forEach(i=>{const e=$(i);e.style.display='none';e.disabled=true});
+  const tipEl=$('officeTip');
+  if(!t){
+    tipEl.style.display='none';
+    $('fPath').textContent='未打开文件';$('fPath').title='';
+    $('fKind').textContent='就绪';$('fFidelity').textContent='—';return;
+  }
+  $('fPath').textContent=t.path;$('fPath').title=t.path;
+  if(t.kind===''){tipEl.style.display='none';$('fKind').textContent='正在打开…';$('fFidelity').textContent='—';return}
+  const isOffice=t.kind==='office';
+  const isRtf=t.kind==='rtf';
+  const wpsMode=isOffice&&t.officeMode==='wps'&&!SPLIT;
+  if(isOffice||isRtf){
+    if(wpsMode){
+      showBtn('bEmbed',true);showBtn('bBack',true);showBtn('bExternal',true);
+      $('fKind').innerHTML='<b>WPS 原生</b> · 文档区由 WPS 绘制';
+      $('fFidelity').textContent='样式 100% 一致；在 WPS 里改并保存，原文件零损耗';return;
+    }
+    tipEl.style.display='none';
+    showBtn('bExternal',true);
+    if(!SPLIT&&isOffice)showBtn('bNative',true);   // RTF 走服务端渲染，不需要 WPS 嵌入
+    if(isRtf){
+      $('fKind').innerHTML='<b>RTF 内置渲染</b> · 富文本';
+      $('fFidelity').textContent='文字 / 图片 / 基本格式已还原，不保证与原生 100% 一致';
+    }else{
+      $('fKind').innerHTML='<b>内置预览</b> · '+(t.builtinSupport?'已解析原文件内容':'二进制老格式');
+      $('fFidelity').textContent=t.builtinSupport
+        ?'能看文字与表格，不保证分页/字体'+(SPLIT?'；并排模式下 WPS 嵌入不可用':'；要 100% 原生显示点「用 WPS 嵌入」')
+        :'该格式无法在软件内解析，请用 WPS 打开';
+    }
+    return;
+  }
+  tipEl.style.display='none';
+  if(t.kind==='html'){
+    $('fKind').innerHTML='<b>HTML</b> · '+esc(t.name);
+    $('fFidelity').textContent='窗口内渲染 · 仅加载本地资源 · 已禁止联网';
+    return;
+  }
+  if(t.kind==='other'){
+    showBtn('bExternal',true);
+    $('fKind').innerHTML='<b>未知格式</b> · '+esc(t.name.split('.').pop());
+    $('fFidelity').textContent='不在支持列表内';return;
+  }
+  if(t.kind==='image'){
+    $('fKind').innerHTML='<b>图片</b> · 浏览器原生渲染';
+    $('fFidelity').textContent='像素级一致 · 只读';return;
+  }
+  if(t.kind==='pdf'){
+    $('fKind').innerHTML='<b>PDF</b> · 浏览器内置 PDF 引擎';
+    $('fFidelity').textContent='分页/字体/矢量 100% 一致 · 只读';return;
+  }
+  const editing=t.editing&&t.kind==='text';
+  const isMd=t.kind==='text'&&/\.(md|markdown)$/i.test(t.name);
+  const isCsv=/\.(csv|tsv)$/i.test(t.name);
+  showBtn('bEdit',true,false,t.editing?'结束编辑':'编辑');
+  showBtn('bSave',true,!t.dirty);
+  if(isMd&&!editing)showBtn('bMode',true,false,t.mode==='source'?'预览':'源码');
+  if(isCsv)showBtn('bCsv',true,false,t.csv?'源码':'表格视图');
+  if(editing&&isMd){showBtn('bBold',true);showBtn('bHead',true)}
+  $('fKind').innerHTML=t.dirty?'<b>已修改</b> · 未保存':'<b>'+esc(t.name.split('.').pop().toUpperCase())+'</b> · 编码 '+esc(t.encoding)+' · '+fmtSize(t.size||0);
+  $('fFidelity').textContent=isMd
+    ?'源码与文件一字不差；预览仅改变显示，不写回文件'
+    :'内容与文件一字不差；保存直接写回原文件（保持原编码）';
+}
+
+/* ---------- Office 内置预览（只读降级；100% 原生显示请用「用 WPS 嵌入」） ---------- */
+const NS_W='http://schemas.openxmlformats.org/wordprocessingml/2006/main';
+const NS_A='http://schemas.openxmlformats.org/drawingml/2006/main';
+const NS_R='http://schemas.openxmlformats.org/officeDocument/2006/relationships';
+const kids=(el,n)=>Array.from(el.children).filter(c=>c.localName===n);
+const first=(el,n)=>kids(el,n)[0]||null;
+
+async function loadBuiltin(t){
+  t.builtinLoading=true;
+  try{
+    const ext=(t.name.split('.').pop()||'').toLowerCase();
+    let html;
+    if(ext==='pptx'){
+      // 服务端渲染：只读 slide XML / rels，图片经 /api/office/media 单张取。
+      // 既能让图片正常显示，也避免把上百 MB 的整包塞进浏览器。
+      const d=await get(api('pptx?path='+encodeURIComponent(t.path)));
+      if(d.error)throw new Error(d.error);
+      html=d.html;
+    }else if(ext==='rtf'){
+      const d=await get(api('rtf?path='+encodeURIComponent(t.path)));
+      if(d.error)throw new Error(d.error);
+      html=d.html;
+    }else{
+      const r=await fetch('/api/raw?path='+encodeURIComponent(t.path)+'&t='+encodeURIComponent(T));
+      if(!r.ok)throw new Error('读取文件失败 '+r.status);
+      const buf=await r.arrayBuffer();
+      if(ext==='docx')html=await docxHtml(buf);
+      else if(ext==='xlsx')html=xlsxHtml(buf);
+      else throw new Error('不支持内置解析');
+    }
+    t.builtinHtml=html;
+  }catch(e){
+    t.builtinHtml='<div class="note-card"><h2>内置解析失败</h2><p>'+esc(e.message)+
+      '</p><p>可点「用 WPS 嵌入」或「独立窗口打开」用原生软件查看。</p></div>';
+  }
+  t.builtinLoading=false;
+  if(t.officeMode!=='wps'){
+    const b=paneForTab(t).va.querySelector('.officePreview');
+    if(b)b.innerHTML=t.builtinHtml;
+  }
+}
+
+async function docxHtml(buf){
+  const zip=await JSZip.loadAsync(buf);
+  const part=zip.file('word/document.xml');
+  if(!part)throw new Error('缺少 word/document.xml');
+  const doc=new DOMParser().parseFromString(await part.async('string'),'application/xml');
+  const body=doc.getElementsByTagNameNS(NS_W,'body')[0];
+  if(!body)throw new Error('正文为空');
+  const rels={},rf=zip.file('word/_rels/document.xml.rels');
+  if(rf){
+    const rd=new DOMParser().parseFromString(await rf.async('string'),'application/xml');
+    Array.from(rd.getElementsByTagName('Relationship')).forEach(x=>rels[x.getAttribute('Id')]=x.getAttribute('Target'));
+  }
+  const media={};
+  for(const p of Object.keys(zip.files))
+    if(/^word\/media\//i.test(p)&&!zip.files[p].dir)
+      media[p]=URL.createObjectURL(await zip.file(p).async('blob'));
+  const run=r=>{
+    const rPr=first(r,'rPr'),css=[];
+    if(rPr){
+      if(first(rPr,'b'))css.push('font-weight:600');
+      if(first(rPr,'i'))css.push('font-style:italic');
+      if(first(rPr,'u'))css.push('text-decoration:underline');
+      const c=first(rPr,'color'),cv=c?(c.getAttribute('w:val')||''):'';
+      if(cv&&cv!=='auto')css.push('color:#'+cv);
+      const sz=first(rPr,'sz'),sv=sz?parseInt(sz.getAttribute('w:val')):0;
+      if(sv)css.push('font-size:'+(sv/2)+'pt');
+    }
+    let out='';
+    for(const n of Array.from(r.children)){
+      if(n.localName==='t')out+=esc(n.textContent);
+      else if(n.localName==='br')out+='<br>';
+      else if(n.localName==='tab')out+='&nbsp;&nbsp;&nbsp;&nbsp;';
+      else if(n.localName==='drawing'||n.localName==='pict'){
+        let img='';
+        for(const b of Array.from(n.getElementsByTagNameNS(NS_A,'blip'))){
+          const rid=b.getAttributeNS(NS_R,'embed')||b.getAttribute('r:embed');
+          const tg=rels[rid];if(!tg)continue;
+          const u=media['word/'+tg.replace(/^\//,'')];
+          if(u){img='<img src="'+u+'" alt="图片">';break}
+        }
+        out+=img||'<span style="color:var(--muted)">［图片］</span>';
+      }
+    }
+    return '<span style="'+css.join(';')+'">'+out+'</span>';
+  };
+  const para=p=>{
+    const pPr=first(p,'pPr'),st=pPr?first(pPr,'pStyle'):null,v=st?(st.getAttribute('w:val')||''):'';
+    let tag='p';
+    if(/heading\s*1|^1$|标题\s*1|title/i.test(v))tag='h1';
+    else if(/heading\s*2|^2$|标题\s*2/i.test(v))tag='h2';
+    else if(/heading\s*3|^3$|标题\s*3/i.test(v))tag='h3';
+    const jc=pPr?first(pPr,'jc'):null,al=jc?jc.getAttribute('w:val'):'';
+    const map={center:'center',right:'right',both:'justify',left:'left'};
+    const style=map[al]?' style="text-align:'+map[al]+'"':'';
+    let inner='';
+    for(const n of Array.from(p.children)){
+      if(n.localName==='r')inner+=run(n);
+      else if(n.localName==='hyperlink')for(const rr of kids(n,'r'))inner+=run(rr);
+    }
+    return '<'+tag+style+'>'+(inner||'<br>')+'</'+tag+'>';
+  };
+  const table=tbl=>{
+    let h='<table class="csv"><tbody>';
+    for(const tr of kids(tbl,'tr')){
+      h+='<tr>';
+      for(const tc of kids(tr,'tc')){
+        let c='';for(const p of kids(tc,'p'))for(const r of kids(p,'r'))c+=run(r);
+        h+='<td>'+c+'</td>';
+      }
+      h+='</tr>';
+    }
+    return h+'</tbody></table>';
+  };
+  let html='';
+  for(const n of Array.from(body.children)){
+    if(n.localName==='p')html+=para(n);
+    else if(n.localName==='tbl')html+=table(n);
+  }
+  return html||'<p style="color:var(--muted)">（文档没有可显示的正文）</p>';
+}
+
+function xlsxHtml(buf){
+  const wb=XLSX.read(new Uint8Array(buf),{type:'array',cellStyles:true});
+  let h='';
+  for(const n of wb.SheetNames){
+    const aoa=XLSX.utils.sheet_to_json(wb.Sheets[n],{header:1,defval:'',raw:false});
+    const cols=aoa.reduce((m,r)=>Math.max(m,r.length),1);
+    h+='<h3>Sheet：'+esc(n)+'</h3><table class="csv"><tbody>';
+    aoa.slice(0,300).forEach(row=>{
+      h+='<tr>';
+      for(let c=0;c<cols;c++)h+='<td>'+esc(row[c]??'')+'</td>';
+      h+='</tr>';
+    });
+    h+='</tbody></table>';
+    if(aoa.length>300)h+='<p style="color:var(--muted)">仅显示前 300 行，共 '+aoa.length+' 行</p>';
+  }
+  return h||'（空工作簿）';
+}
+
+async function pptxHtml(buf){
+  const zip=await JSZip.loadAsync(buf);
+  const paths=Object.keys(zip.files).filter(p=>/^ppt\/slides\/slide\d+\.xml$/i.test(p))
+    .sort((a,b)=>parseInt(a.match(/slide(\d+)/i)[1])-parseInt(b.match(/slide(\d+)/i)[1]));
+  if(!paths.length)throw new Error('未找到幻灯片');
+  let h='';
+  for(let i=0;i<paths.length;i++){
+    const doc=new DOMParser().parseFromString(await zip.file(paths[i]).async('string'),'application/xml');
+    const ts=Array.from(doc.getElementsByTagNameNS(NS_A,'t'));
+    h+='<div class="slide"><div class="no">第 '+(i+1)+' 页</div>'+
+       (ts.length?ts.map(x=>'<p>'+esc(x.textContent)+'</p>').join(''):
+        '<p style="color:var(--muted)">（本页无可提取文字）</p>')+'</div>';
+  }
+  return h;
+}
+
+function csvTable(text,name){
+  const sep=/\.tsv$/i.test(name)?'\t':',';
+  const rows=[];let row=[],cell='',q=false;
+  for(let i=0;i<text.length;i++){
+    const c=text[i];
+    if(q){if(c==='"'){if(text[i+1]==='"'){cell+='"';i++}else q=false}else cell+=c}
+    else if(c==='"')q=true;
+    else if(c===sep){row.push(cell);cell=''}
+    else if(c==='\n'){row.push(cell);rows.push(row);row=[];cell=''}
+    else if(c!=='\r')cell+=c;
+  }
+  if(cell||row.length){row.push(cell);rows.push(row)}
+  const body=rows.slice(0,300);
+  let h='<table class="csv"><thead><tr>'+body.slice(0,1).map(r=>r.map(c=>'<th>'+esc(c)+'</th>').join('')).join('')+'</tr></thead><tbody>';
+  h+=body.slice(1).map(r=>'<tr>'+r.map(c=>'<td>'+esc(c)+'</td>').join('')+'</tr>').join('')+'</tbody></table>';
+  if(rows.length>300)h+='<p style="color:var(--muted);font-size:12px">仅显示前 300 行，共 '+rows.length+' 行</p>';
+  return h;
+}
+
+function toggleMode(){const t=cur();if(!t)return;t.mode=t.mode==='source'?'preview':'source';if(t.mode==='preview')t.editing=false;render()}
+function toggleCsv(){const t=cur();if(!t)return;t.csv=!t.csv;render()}
+function toggleEdit(){
+  const t=cur();if(!t||t.kind!=='text')return;
+  t.editing=!t.editing;
+  if(t.editing)t.mode='source';   // 进入编辑必须落在源码框里（预览态没有可输入区域）
+  render();toast(t.editing?'可直接改字、回车加段落，改完点保存':'已退出编辑');
+}
+function mdFormat(pre,post){
+  const t=cur();if(!t)return;
+  const P=activePane();
+  const ta=P.va.querySelector('textarea.src');if(!ta)return;
+  const a=ta.selectionStart,b=ta.selectionEnd,sel=ta.value.slice(a,b)||'文字';
+  const lineStart=t.text.lastIndexOf('\n',a-1)+1;
+  if(pre==='# '){
+    const before=t.text.slice(0,lineStart),after=t.text.slice(lineStart);
+    t.text=before+pre+after;
+  }else t.text=t.text.slice(0,a)+pre+sel+post+t.text.slice(b);
+  t.dirty=true;render();
+  const n=P.va.querySelector('textarea.src');if(n){n.focus();n.selectionStart=n.selectionEnd=a+pre.length+sel.length}
+}
+async function save(){
+  const t=cur();if(!t)return;
+  try{
+    const d=await post(api('save'),{path:t.path,text:t.text,encoding:t.encoding});
+    if(!d.ok)throw new Error(d.error||'保存失败');
+    t.dirty=false;renderTabs();render();
+    toast('已写回原文件（'+d.bytes+' 字节，编码 '+d.encoding+'）· 首次备份：'+d.backup.split(/[\\/]/).pop());
+  }catch(e){toast('保存失败：'+e.message,5000)}
+}
+
+/* ---------------- Office：WPS 原生窗口嵌入 ---------------- */
+function layoutHost(){
+  const t=cur();if(!t)return;
+  const P=paneForTab(t),oh=P.oh,r=P.el.getBoundingClientRect();
+  const pad=8;
+  oh.style.left=pad+'px';oh.style.top=pad+'px';
+  oh.style.width=Math.max(200,r.width-pad*2-2)+'px';
+  oh.style.height=Math.max(200,r.height-pad*2-2)+'px';
+  const hr=oh.getBoundingClientRect();
+  state.hostRect={x:hr.left,y:hr.top,w:hr.width,h:hr.height};
+  if(t.kind==='office'&&t.embedded)
+    post(api('office/sync'),{rect:state.hostRect,scale:window.devicePixelRatio||1});
+}
+function tip(msg,cls){
+  const e=$('officeTip');e.style.display='block';e.className='office-tip '+(cls||'');e.textContent=msg;
+  $('fOffice').textContent='WPS 嵌入：'+msg;
+}
+async function startOffice(t){
+  layoutHost();
+  tip('正在启动 WPS 并嵌入窗口…');
+  let d;
+  try{
+    d=await post(api('office/embed'),{path:t.path,rect:state.hostRect,scale:window.devicePixelRatio||1});
+  }catch(e){d={status:'fail',message:e.message}}
+  t.embedded=d.status==='embedded';
+  if(t.embedded){
+    tip(d.message,'ok');
+    setTimeout(()=>post(api('office/sync'),{rect:state.hostRect,scale:window.devicePixelRatio||1}),600);
+  }else{
+    // 失败自动回到内置预览，绝不把用户卡在空白文档区
+    t.embedded=false;t.embedPending=false;state.officeActive=false;t.officeMode='builtin';
+    tip('WPS 嵌入未成功，已回到内置预览：'+d.message,'err');
+    toast('WPS 嵌入失败，已自动回到内置预览（内容仍可查看）',5000);
+    setTimeout(()=>{if(cur()===t&&t.officeMode==='builtin')render()},1400);
+  }
+}
+function useWps(){
+  const t=cur();if(!t||t.kind!=='office')return;
+  if(SPLIT){toast('并排模式下 Office 使用内置预览；退出并排后可用 WPS 嵌入',4000);return}
+  t.officeMode='wps';render();
+  toast('正在尝试把 WPS 收进本窗口；失败会自动回到内置预览',4000);
+}
+function backBuiltin(){
+  const t=cur();if(!t)return;
+  leaveOffice();t.officeMode='builtin';render();toast('已回到内置预览');
+}
+async function reEmbed(){
+  const t=cur();if(!t||t.kind!=='office')return;
+  t.embedded=false;t.embedPending=false;state.officeActive=false;
+  await post(api('office/detach'),{});
+  t.officeMode='wps';t.embedPending=false;render();
+}
+async function openExternal(){
+  const t=cur();if(!t)return;
+  const d=await post(api('open-external'),{path:t.path});
+  t.embedded=false;t.embedPending=false;t.officeMode='builtin';state.officeActive=false;
+  tip(d.message||'已交给系统默认程序','');
+  $('fOffice').textContent='已交给系统默认程序打开';
+  toast(d.message||'已打开',3500);
+}
+function quit(){
+  if(!confirm('确定结束后台服务？结束后这个窗口将不能再用，需要重新双击 start.bat。\n平时直接关窗口即可，不必点这里。'))return;
+  svcDown('你结束了本地服务');
+  post(api('quit'),{}).catch(()=>{});
+}
+
+/* 双栏初始化；两栏各自滚动，滚动事件互不干扰 */
+bindPanes();bindSplitter();applySplitWidth();
+/* 窗口尺寸/滚动变化时，把文档区矩形持续同步给本地桥 */
+new ResizeObserver(()=>{if(needHost())layoutHost()}).observe($('stage'));
+window.addEventListener('resize',()=>{if(needHost())layoutHost()});
+[PANES.L,PANES.R].forEach(P=>P.el.addEventListener('scroll',()=>{if(needHost())layoutHost()}));
+setInterval(()=>{if(needHost())layoutHost()},1500);
+window.addEventListener('beforeunload',()=>{
+  navigator.sendBeacon(api('office/detach'),'{}');
+  navigator.sendBeacon(api('window-gone'),'{}');
+});
+</script>
+</body>
+</html>
